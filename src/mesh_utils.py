@@ -16,10 +16,13 @@ from pyvista import DataSet, MultiBlock, PolyData, UnstructuredGrid
 import numpy as np
 import pyvista as pv
 from scipy.spatial.distance import cdist
+import pyacvd
+import mcubes
+import pymeshfix as mf
 
 def merge_models(
-    models: List[PolyData or UnstructuredGrid or DataSet],
-) -> PolyData or UnstructuredGrid:
+    models: List[Union[PolyData, UnstructuredGrid, DataSet]],
+) -> Union[PolyData, UnstructuredGrid]:
     """Merge all models in the `models` list. The format of all models must be the same."""
 
     merged_model = models[0]
@@ -42,11 +45,6 @@ def uniform_mesh(mesh: PolyData, nsub: Optional[int] = 3, nclus: int = 20000) ->
     Returns:
         new_mesh: A uniform mesh model.
     """
-    # Check pyacvd package
-    try:
-        import pyacvd
-    except ImportError:
-        raise ImportError("You need to install the package `pyacvd`. \nInstall pyacvd via `pip install pyacvd`")
 
     # if mesh is not dense enough for uniform remeshing, increase the number of triangles in a mesh.
     if not (nsub is None):
@@ -227,12 +225,6 @@ def marching_cube_mesh(
     Returns:
         A mesh model.
     """
-    try:
-        import mcubes
-    except ImportError:
-        raise ImportError(
-            "You need to install the package `mcubes`." "\nInstall mcubes via `pip install --upgrade PyMCubes`"
-        )
 
     pc = pc.copy()
 
@@ -357,12 +349,6 @@ def marching_cube_mesh(
     Returns:
         A mesh model.
     """
-    try:
-        import mcubes
-    except ImportError:
-        raise ImportError(
-            "You need to install the package `mcubes`." "\nInstall mcubes via `pip install --upgrade PyMCubes`"
-        )
 
     pc = pc.copy()
 
@@ -453,14 +439,6 @@ def clean_mesh(mesh: PolyData) -> PolyData:
 
 def fix_mesh(mesh: PolyData) -> PolyData:
     """Repair the mesh where it was extracted and subtle holes along complex parts of the mesh."""
-
-    # Check pymeshfix package
-    try:
-        import pymeshfix as mf
-    except ImportError:
-        raise ImportError(
-            "You need to install the package `pymeshfix`. \nInstall pymeshfix via `pip install pymeshfix`"
-        )
 
     meshfix = mf.MeshFix(mesh)
     meshfix.repair(verbose=False)

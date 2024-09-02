@@ -7,11 +7,5 @@
 ```bash
 conda create -n SpaGradient python=3.9
 conda activate SpaGradient
-pip install pyacvd
-conda install conda-forge::pyvista
-conda install -c conda-forge pyGAM
-conda install conda-forge::pymcubes
-pip install numpy==1.23
-conda install -c conda-forge scanpy python-igraph leidenalg
-pip install pymeshfix
+
 ```
