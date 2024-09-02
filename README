@@ -1,6 +1,8 @@
-#SpaGradient
+# SpaGradient
 
-#How to install 
+[![python >= 3.8](https://img.shields.io/badge/python-3.8-brightgreen)](https://www.python.org/) 
+
+## How to install
 
 ```bash
 conda create -n SpaGradient python=3.8
