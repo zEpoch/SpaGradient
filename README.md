@@ -7,5 +7,5 @@
 ```bash
 conda create -n SpaGradient python=3.9
 conda activate SpaGradient
-
+pip install git+https://github.com/zEpoch/SpaGradient
 ```
