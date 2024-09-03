@@ -17,7 +17,7 @@ from statsmodels.stats.multitest import multipletests
 from patsy import bs, cr, dmatrix
 from scipy import stats
 from statsmodels.genmod.generalized_linear_model import GLMResultsWrapper
-
+from tqdm import tqdm
 
 def lrt(full: GLMResultsWrapper, restr: GLMResultsWrapper) -> np.float64:
     """Perform likelihood-ratio test on the full model and constrained model.
@@ -61,9 +61,8 @@ def diff_test_helper(
     transformed_x_null = dmatrix(reducedModelFormulaStr, data, return_type="dataframe")
     expression = data["expression"]
     try:
-        nb2_family = sm.families.NegativeBinomial()  # (alpha=aux_olsr_results.params[0])
-
-        nb2_full = sm.GLM(expression, transformed_x, family=nb2_family).fit()
+        nb2_family = sm.families.NegativeBinomial(alpha = 1)  # (alpha=aux_olsr_results.params[0])
+        nb2_full = sm.GLM(expression, transformed_x, family=nb2_family, ).fit()
         nb2_null = sm.GLM(expression, transformed_x_null, family=nb2_family).fit()
     except:
         return ("fail", "NB2", 1)
@@ -79,18 +78,14 @@ def glm_degs(
     factors: str = "gradient"
 ) -> None:
     """Differential genes expression tests using generalized linear regressions.
-
     The results would be stored in the adata's .uns["glm_degs"] annotation and the update is inplace.
-
     Tests each gene for differential expression as a function of integral time (the time estimated via the reconstructed
     vector field function) or pseudotime using generalized additive models with natural spline basis. This function can
     also use other covariates as specified in the full (i.e `~clusters`) and reduced model formula to identify
     differentially expression genes across different categories, group, etc.
-
     glm_degs relies on statsmodels package and is adapted from the `differentialGeneTest` function in Monocle. Note that
     glm_degs supports performing deg analysis for any layer or normalized data in your adata object. That is you can
     either use the total, new, unspliced or velocity, etc. for the differential expression analysis.
-
     Args:
         adata: An AnnData object.
         X_data: The user supplied data that will be used for differential expression analysis directly. Defaults to
@@ -110,24 +105,19 @@ def glm_degs(
             (link=None, alpha=1.0), by default it is 1), we use the auxiliary OLS regression without a constant from
             Messrs Cameron and Trivedi. More details can be found here:
             https://towardsdatascience.com/negative-binomial-regression-f99031bb25b4. Defaults to "NB2".
-
     Raises:
         ValueError: `X_data` is provided but `genes` does not correspond to its columns.
         Exception: Factors from the model formula `fullModelFormulaStr` invalid.
     """
     if genes is None:
-        genes = adata.var_names
-    
-    df_factors = adata.obs[factors]
-    sparse = issparse(X_data)
+        genes = adata.var.index.tolist()
+    df_factors = adata.obs[[factors]]
+    sparse = issparse(adata.X)
     deg_df = pd.DataFrame(index=genes, columns=["status", "family", "pval"])
-    for i, gene in tqdm(
-        enumerate(genes),
-        "Detecting gradient dependent genes via Generalized Additive Models (GAMs)",
-    ):
-        expression = X_data[:, i].toarray() if sparse else X_data[:, i]
-        df_factors["expression"] = expression
-        deg_df.iloc[i, :] = diff_test_helper(df_factors, factors, '~1')
-
+    for i, gene in tqdm(enumerate(genes),  "Detecting gradient dependent genes via Generalized Additive Models (GAMs)",):
+        expression = adata[:, gene].X.toarray().flatten() if sparse else adata[:, gene].flatten()
+        df_factors.loc[:,"expression"] = expression
+        result = diff_test_helper(df_factors, '~grid_field', '~1')
+        deg_df.loc[gene, ["status", "family", "pval"]] = result
     deg_df["qval"] = multipletests(deg_df["pval"], method="fdr_bh")[1]
     return deg_df
