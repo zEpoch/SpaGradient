@@ -2,5 +2,8 @@ pyacvd==0.2.11
 pymeshfix
 pyvista
 pymcubes
-pygam
 anndata
+seaborn
+scikit-learn
+statsmodels
+scanpy
