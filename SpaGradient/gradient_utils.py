@@ -112,6 +112,7 @@ def glm_degs(
     if genes is None:
         genes = adata.var.index.tolist()
     df_factors = adata.obs[[factors]]
+    df_factors['expression'] = 0
     sparse = issparse(adata.X)
     deg_df = pd.DataFrame(index=genes, columns=["status", "family", "pval"])
     for i, gene in tqdm(enumerate(genes),  "Detecting gradient dependent genes via Generalized Additive Models (GAMs)",):
