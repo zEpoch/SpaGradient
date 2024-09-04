@@ -455,8 +455,7 @@ def fix_mesh(mesh: PolyData) -> PolyData:
 def smooth_mesh(mesh: PolyData, n_iter: int = 100, **kwargs) -> PolyData:
     """
     Adjust point coordinates using Laplacian smoothing.
-    https://docs.pyvista.org/api/core/_autosummary/pyvista.PolyData.smooth.html#pyvista.PolyData.smooth
-
+    https://docs.pyvista.org/api/core/_autosummary/pyvista.polydatafilters.smooth#pyvista.PolyDataFilters.smooth
     Args:
         mesh: A mesh model.
         n_iter: Number of iterations for Laplacian smoothing.
