@@ -232,7 +232,7 @@ def marching_cube_mesh(
     raw_points = np.asarray(pc.points)
     pc.points = new_points = raw_points - np.min(raw_points, axis=0)
 
-    # Generate new models for calculatation.
+    # Generate new models for calculation.
     if dist_sample_num is None:
         dist = cdist(XA=new_points, XB=new_points, metric="euclidean")
         row, col = np.diag_indices_from(dist)
@@ -251,7 +251,7 @@ def marching_cube_mesh(
     scale_pc = scale_model(model=pc, scale_factor=1 / mc_sf, scale_center=(0, 0, 0))
     scale_pc_points = scale_pc.points = np.ceil(np.asarray(scale_pc.points)).astype(np.int64)
 
-    # Generate grid for calculatation based on new model.
+    # Generate grid for calculation based on new model.
     volume_array = np.zeros(
         shape=[
             scale_pc_points[:, 0].max() + 3,
@@ -327,86 +327,6 @@ def uniform_larger_pc(
     return new_pc
 
 
-def marching_cube_mesh(
-    pc: PolyData,
-    levelset: Union[int, float] = 0,
-    mc_scale_factor: Union[int, float] = 1.0,
-    dist_sample_num: Optional[int] = None,
-):
-    """
-    Computes a triangle mesh from a point cloud based on the marching cube algorithm.
-    Algorithm Overview:
-        The algorithm proceeds through the scalar field, taking eight neighbor locations at a time (thus forming an
-        imaginary cube), then determining the polygon(s) needed to represent the part of the iso-surface that passes
-        through this cube. The individual polygons are then fused into the desired surface.
-
-    Args:
-        pc: A point cloud model.
-        levelset: The levelset of iso-surface. It is recommended to set levelset to 0 or 0.5.
-        mc_scale_factor: The scale of the model. The scaled model is used to construct the mesh model.
-        dist_sample_num: The down-sampling number when calculating the scaling factor using the minimum distance. Set to 100 for computation efficiency.
-
-    Returns:
-        A mesh model.
-    """
-
-    pc = pc.copy()
-
-    # Move the model so that the coordinate minimum is at (0, 0, 0).
-    raw_points = np.asarray(pc.points)
-    pc.points = new_points = raw_points - np.min(raw_points, axis=0)
-
-    # Generate new models for calculatation.
-    if dist_sample_num is None:
-        dist = cdist(XA=new_points, XB=new_points, metric="euclidean")
-        row, col = np.diag_indices_from(dist)
-        dist[row, col] = None
-    else:
-        rand_idx = (
-            np.random.choice(new_points.shape[0], dist_sample_num)
-            if new_points.shape[0] >= dist_sample_num
-            else np.arange(new_points.shape[0])
-        )
-        dist = cdist(XA=new_points[rand_idx, :], XB=new_points, metric="euclidean")
-        dist[np.arange(rand_idx.shape[0]), rand_idx] = None
-    max_dist = np.nanmin(dist, axis=1).max()
-    mc_sf = max_dist * mc_scale_factor
-
-    scale_pc = scale_model(model=pc, scale_factor=1 / mc_sf, scale_center=(0, 0, 0))
-    scale_pc_points = scale_pc.points = np.ceil(np.asarray(scale_pc.points)).astype(np.int64)
-
-    # Generate grid for calculatation based on new model.
-    volume_array = np.zeros(
-        shape=[
-            scale_pc_points[:, 0].max() + 3,
-            scale_pc_points[:, 1].max() + 3,
-            scale_pc_points[:, 2].max() + 3,
-        ]
-    )
-    volume_array[scale_pc_points[:, 0], scale_pc_points[:, 1], scale_pc_points[:, 2]] = 1
-
-    # Extract the iso-surface based on marching cubes algorithm.
-    # volume_array = mcubes.smooth(volume_array)
-    vertices, triangles = mcubes.marching_cubes(volume_array, levelset)
-
-    if len(vertices) == 0:
-        raise ValueError(f"The point cloud cannot generate a surface mesh with `marching_cube` method.")
-
-    v = np.asarray(vertices).astype(np.float64)
-    f = np.asarray(triangles).astype(np.int64)
-    f = np.c_[np.full(len(f), 3), f]
-
-    # Generate mesh model.
-    mesh = pv.PolyData(v, f.ravel()).extract_surface().triangulate()
-    mesh.clean(inplace=True)
-    mesh = scale_model(model=mesh, scale_factor=mc_sf, scale_center=(0, 0, 0))
-
-    # Transform.
-    scale_pc = scale_model(model=scale_pc, scale_factor=mc_sf, scale_center=(0, 0, 0))
-    mesh.points = rigid_transform(
-        coords=np.asarray(mesh.points), coords_refA=np.asarray(scale_pc.points), coords_refB=raw_points
-    )
-    return mesh
 
 
 def clean_mesh(mesh: PolyData) -> PolyData:
@@ -438,7 +358,11 @@ def clean_mesh(mesh: PolyData) -> PolyData:
 
 
 def fix_mesh(mesh: PolyData) -> PolyData:
-    """Repair the mesh where it was extracted and subtle holes along complex parts of the mesh."""
+    """
+    Repair the mesh where it was extracted and subtle holes along complex parts of the mesh.
+    https://pymeshfix.pyvista.org/_autosummary/pymeshfix.MeshFix.html
+    
+    """
 
     meshfix = mf.MeshFix(mesh)
     meshfix.repair(verbose=False)
