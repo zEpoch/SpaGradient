@@ -19,5 +19,7 @@ setup(
         'scikit-learn',
         'statsmodels',
         'scanpy',
+        'trame',
+        'pyvista[jupyter]'
     ],
 )
