@@ -121,4 +121,11 @@ def glm_degs(
         result = diff_test_helper(df_factors, '~grid_field', '~1')
         deg_df.loc[gene, ["status", "family", "pval"]] = result
     deg_df["qval"] = multipletests(deg_df["pval"], method="fdr_bh")[1]
+    
+    deg_df['pos_rate'] = 0.0
+    for i in deg_df.index.to_list():
+        deg_df.at[i, 'pos_rate'] = np.sum(adata[:,i].X.A != 0) / len(adata[:,i].X.A)
+    deg_df['gene'] = deg_df.index.to_list()
+    deg_df['pval'] = deg_df['pval'].astype(np.float32)
+    
     return deg_df
