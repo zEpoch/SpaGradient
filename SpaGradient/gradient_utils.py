@@ -18,6 +18,8 @@ from patsy import bs, cr, dmatrix
 from scipy import stats
 from statsmodels.genmod.generalized_linear_model import GLMResultsWrapper
 from tqdm import tqdm
+import numpy as np
+import statsmodels.api as sm
 
 def lrt(full: GLMResultsWrapper, restr: GLMResultsWrapper) -> np.float64:
     """Perform likelihood-ratio test on the full model and constrained model.
@@ -72,9 +74,7 @@ def diff_test_helper(
 
 def glm_degs(
     adata: AnnData,
-    X_data: Optional[np.ndarray] = None,
     genes: Optional[List[str]] = None,
-    layer: Optional[str] = None,
     factors: str = "gradient"
 ) -> None:
     """Differential genes expression tests using generalized linear regressions.
@@ -88,17 +88,9 @@ def glm_degs(
     either use the total, new, unspliced or velocity, etc. for the differential expression analysis.
     Args:
         adata: An AnnData object.
-        X_data: The user supplied data that will be used for differential expression analysis directly. Defaults to
-            None.
         genes: The layer that will be used to retrieve data for dimension reduction and clustering. If `None`, .X is
             used. Defaults to None.
-        layer: The layer that will be used to retrieve data for dimension reduction and clustering. If `None`, .X is
-            used. Defaults to None.
-        fullModelFormulaStr: A formula string specifying the full model in differential expression tests (i.e.
-            likelihood ratio tests) for each gene/feature. Defaults to "~cr(integral_time, df=3)".
-        reducedModelFormulaStr: A formula string specifying the reduced model in differential expression tests (i.e.
-            likelihood ratio tests) for each gene/feature. Defaults to "~1".
-        family: The distribution family used for the expression responses in statsmodels. Currently, always uses `NB2`
+        The distribution family used for the expression responses in statsmodels. Currently, always uses `NB2`
             and this is ignored. NB model requires us to define a parameter alpha which it uses to express the
             variance in terms of the mean as follows: variance = mean + alpha mean^p. When p=2, it corresponds to
             the NB2 model. In order to obtain the correct parameter alpha (sm.genmod.families.family.NegativeBinomial
@@ -128,4 +120,60 @@ def glm_degs(
     deg_df['gene'] = deg_df.index.to_list()
     deg_df['pval'] = deg_df['pval'].astype(np.float32)
     
+    return deg_df
+
+def polyfit_degs(
+    adata: AnnData,
+    genes: Optional[List[str]] = None,
+    factors: str = "gradient",
+    degree: int = 3,
+    get_rid_of_zero: bool = False
+) -> None:
+    """Differential genes expression tests using polynomial regression.
+
+    Raises:
+        ValueError: `X_data` is provided but `genes` does not correspond to its columns.
+        Exception: Factors from the model formula `fullModelFormulaStr` invalid.
+    """
+    if genes is None:
+        genes = adata.var.index.tolist()
+    df_factors = adata.obs[[factors]].copy()
+    df_factors['expression'] = 0
+    deg_df = pd.DataFrame(genes, index = genes, columns =['gene'])
+    deg_df['p_value'] = 0
+    deg_df['rsquared_adj'] = 0
+    deg_df['rsquared'] = 0
+    deg_df[['degree_'+str(degree-i) for i in range(degree+1)]] = 0
+    deg_df[['degree_'+str(degree-i)+'_pvalues' for i in range(degree+1)]] = 0
+    for i in tqdm(genes):
+        expression = adata[:, i].X.toarray().flatten()
+        df_factors.loc[:,"expression"] = expression
+        if get_rid_of_zero:
+            df_factors_copy = df_factors.copy()
+            df_factors_copy = df_factors_copy[df_factors_copy['expression']!=0]
+            x = df_factors_copy[factors].values
+            y = df_factors_copy['expression'].values
+            
+            X = np.vander(x.ravel(), degree + 1)
+            model = sm.OLS(y, X)
+            results = model.fit()
+            deg_df.loc[i, 'p_value'] = results.f_pvalue
+            deg_df.loc[i, ['degree_'+str(degree-i) for i in range(degree+1)]] = results.params
+            deg_df.loc[i, ['degree_'+str(degree-i)+'_pvalues' for i in range(degree+1)]] = results.pvalues
+            deg_df.loc[i, 'rsquared_adj'] = results.rsquared_adj
+            deg_df.loc[i, 'rsquared'] = results.rsquared
+            
+        else:
+            x = df_factors[factors].values
+            y = df_factors['expression'].values
+            X = np.vander(x.ravel(), degree + 1)
+            model = sm.OLS(y, X)
+            results = model.fit()
+            deg_df.loc[i, 'p_value'] = results.f_pvalue
+            deg_df.loc[i, ['degree_'+str(degree-i) for i in range(degree+1)]] = results.params
+            deg_df.loc[i, ['degree_'+str(degree-i)+'_pvalues' for i in range(degree+1)]] = results.pvalues
+            deg_df.loc[i, 'rsquared_adj'] = results.rsquared_adj
+            deg_df.loc[i, 'rsquared'] = results.rsquared
+        adata[:, i].X = df_factors['expression'].values
+
     return deg_df
