@@ -228,3 +228,59 @@ def polyfit_degs(
         adata[:, i].X = df_factors['expression'].values
 
     return deg_df
+
+def get_gradient_genes_matrix(adata, gradient_key, genes):
+    '''
+    Get the gene expression matrix for a given set of genes along a specified gradient.
+    Parameters:
+        adata (AnnData): Annotated data object containing gene expression data.
+        gradient_key (str): Key of the gradient in the `adata.obs` dataframe.
+        genes (list): List of genes to include in the gene expression matrix.
+    Returns:
+        cell_exp (pd.DataFrame): Gene expression matrix with cells as rows and genes as columns, sorted by the gradient values.
+    '''
+    gradient_genes_matrix = pd.DataFrame(index = adata.obs[gradient_key].tolist())
+    select_gene_matrix = adata[:,genes].X.toarray()
+    gradient_genes_matrix[genes] = select_gene_matrix
+    gradient_genes_matrix = gradient_genes_matrix.sort_index()
+    return gradient_genes_matrix
+
+def get_gradient_genes_heatmap(gradient_genes_matrix, save_path = None):
+    '''
+    Generate a heatmap of the gradient genes based on the given cell expression data.
+    Parameters:
+    - cell_exp (numpy.ndarray): The cell expression data.
+    - save_path (str, optional): The file path to save the heatmap image. If not provided, the heatmap will be displayed.
+    Returns:
+    - pandas.DataFrame: The smoothed and normalized expression data used for the heatmap.
+    Note:
+    - This function requires the following packages: statsmodels, scipy, seaborn, matplotlib.pyplot.
+    - The cell expression data should be a 2D numpy array, where each row represents a gene and each column represents a cell.
+    - The function performs z-score normalization on the cell expression data.
+    - The function applies a Savitzky-Golay filter to smooth the expression data.
+    - The function generates a heatmap using seaborn and matplotlib.pyplot.
+    - If save_path is provided, the heatmap image will be saved as a file. Otherwise, the heatmap will be displayed.
+    - The colormap used for the heatmap is "bwr".
+    - If the heatmap is saved, the image will have a DPI of 600 and tight bounding box.
+    '''
+    import statsmodels.stats as stat
+    from scipy import stats
+    from scipy.signal import savgol_filter
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    
+    gradient_genes_matrix_z = stats.zscore(gradient_genes_matrix, axis=0)
+    gradient_genes_matrix_z = gradient_genes_matrix_z.T
+    smooth_length = 100
+    last_pd_smooth = savgol_filter(gradient_genes_matrix_z, smooth_length, 1)
+    last_pd_smooth = pd.DataFrame(last_pd_smooth)
+    last_pd_smooth.columns = gradient_genes_matrix_z.columns
+    last_pd_smooth.index = gradient_genes_matrix_z.index
+    if save_path:
+        sns.heatmap(last_pd_smooth, cmap = "bwr", xticklabels = False)
+        plt.savefig(save_path, bbox_inches = 'tight', dpi = 600)
+        return last_pd_smooth
+    else:
+        sns.heatmap(last_pd_smooth, cmap = "bwr")
+        plt.show()
+        return last_pd_smooth
