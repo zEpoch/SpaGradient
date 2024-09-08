@@ -263,7 +263,6 @@ def get_gradient_genes_heatmap(gradient_genes_matrix, save_path = None):
     - The colormap used for the heatmap is "bwr".
     - If the heatmap is saved, the image will have a DPI of 600 and tight bounding box.
     '''
-    import statsmodels.stats as stat
     from scipy import stats
     from scipy.signal import savgol_filter
     import seaborn as sns
