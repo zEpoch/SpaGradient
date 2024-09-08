@@ -174,6 +174,7 @@ def digitize_general(
 
 
 def polyfit_degs(
+
     adata: AnnData,
     genes: Optional[List[str]] = None,
     factors: str = "gradient",
@@ -181,10 +182,24 @@ def polyfit_degs(
     get_rid_of_zero: bool = False
 ) -> None:
     """Differential genes expression tests using polynomial regression.
-
+    Args:
+        adata (AnnData): Annotated data object containing gene expression data.
+        genes (Optional[List[str]], optional): List of genes to perform differential expression tests on. If None, all genes in `adata` will be used. Defaults to None.
+        factors (str, optional): Name of the column in `adata.obs` that contains the factors for regression analysis. Defaults to "gradient".
+        degree (int, optional): Degree of the polynomial regression model. Defaults to 3.
+        get_rid_of_zero (bool, optional): Flag indicating whether to exclude cells with zero expression values from the analysis. Defaults to False.
+    Returns:
+        deg_df (pd.DataFrame): DataFrame containing the results of the differential gene expression analysis.
+            Columns:
+                - gene: Gene names.
+                - p_value: P-value of the F-test for the overall significance of the polynomial regression model.
+                - rsquared_adj: Adjusted R-squared value of the polynomial regression model.
+                - rsquared: R-squared value of the polynomial regression model.
+                - degree_i: Coefficients of the polynomial regression model for each degree, where i ranges from 0 to the specified degree.
+                - degree_i_pvalues: P-values of the coefficients of the polynomial regression model for each degree, where i ranges from 0 to the specified degree.
     Raises:
-        ValueError: `X_data` is provided but `genes` does not correspond to its columns.
-        Exception: Factors from the model formula `fullModelFormulaStr` invalid.
+        ValueError: Raised if `genes` is provided but does not correspond to the columns in `adata`.
+        Exception: Raised if factors from the model formula `fullModelFormulaStr` are invalid.
     """
     if genes is None:
         genes = adata.var.index.tolist()
