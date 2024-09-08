@@ -239,8 +239,8 @@ def get_gradient_genes_matrix(adata, gradient_key, genes):
     Returns:
         cell_exp (pd.DataFrame): Gene expression matrix with cells as rows and genes as columns, sorted by the gradient values.
     '''
-    gradient_genes_matrix = pd.DataFrame(index = adata.obs[gradient_key].tolist())
-    select_gene_matrix = adata[:,genes].X.toarray()
+    gradient_genes_matrix = pd.DataFrame(index = adata.obs[gradient_key].tolist().copy())
+    select_gene_matrix = adata[:,genes].X.toarray().copy()
     gradient_genes_matrix[genes] = select_gene_matrix
     gradient_genes_matrix = gradient_genes_matrix.sort_index()
     return gradient_genes_matrix
@@ -267,7 +267,7 @@ def get_gradient_genes_heatmap(gradient_genes_matrix, save_path = None):
     from scipy.signal import savgol_filter
     import seaborn as sns
     import matplotlib.pyplot as plt
-    
+    gradient_genes_matrix = gradient_genes_matrix.copy()
     gradient_genes_matrix_z = stats.zscore(gradient_genes_matrix, axis=0)
     gradient_genes_matrix_z = gradient_genes_matrix_z.T
     smooth_length = 100
@@ -275,11 +275,14 @@ def get_gradient_genes_heatmap(gradient_genes_matrix, save_path = None):
     last_pd_smooth = pd.DataFrame(last_pd_smooth)
     last_pd_smooth.columns = gradient_genes_matrix_z.columns
     last_pd_smooth.index = gradient_genes_matrix_z.index
+    n_rows, n_cols = 10,last_pd_smooth.shape[0]/2
     if save_path:
-        sns.heatmap(last_pd_smooth, cmap = "bwr", xticklabels = False)
+        fig, ax = plt.subplots(figsize=(n_rows, n_cols)) 
+        sns.heatmap(last_pd_smooth, cmap = "bwr", xticklabels = False, ax=ax)
         plt.savefig(save_path, bbox_inches = 'tight', dpi = 600)
         return last_pd_smooth
     else:
-        sns.heatmap(last_pd_smooth, cmap = "bwr")
+        fig, ax = plt.subplots(figsize=(n_rows, n_cols)) 
+        sns.heatmap(last_pd_smooth, cmap = "bwr", xticklabels = False, ax=ax)
         plt.show()
         return last_pd_smooth
